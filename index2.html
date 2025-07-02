@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mic Volume Meter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 50px;
+      background: #f0f0f0;
+      margin: 0;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    #volume {
+      font-size: 48px;
+      color: #333;
+      margin-top: 20px;
+    }
+    #bar {
+      margin: 30px auto;
+      width: 300px;
+      height: 30px;
+      background: #ddd;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: inset 0 0 5px #bbb;
+    }
+    #fill {
+      height: 100%;
+      width: 0%;
+      background: green;
+      border-radius: 15px 0 0 15px;
+      transition: width 0.1s ease, background 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Microphone Volume Meter</h1>
+  <p>Allow mic access to see volume level.</p>
+
+  <div id="volume">0</div>
+
+  <div id="bar">
+    <div id="fill"></div>
+  </div>
+
+  <script>
+    async function initMic() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        source.connect(analyser);
+
+        function updateVolume() {
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avgRaw = sum / dataArray.length;
+
+          // Convert raw 0-255 to 0-100 scale
+          const fakeDb = Math.min(100, Math.round((avgRaw / 255) * 100));
+
+          // Update volume number
+          document.getElementById('volume').textContent = fakeDb;
+
+          // Update bar width and color
+          const fill = document.getElementById('fill');
+          fill.style.width = fakeDb + '%';
+
+          if (fakeDb < 40) {
+            fill.style.background = '#4caf50'; // Green
+          } else if (fakeDb < 70) {
+            fill.style.background = '#ff9800'; // Orange
+          } else {
+            fill.style.background = '#f44336'; // Red
+          }
+
+          requestAnimationFrame(updateVolume);
+        }
+
+        updateVolume();
+      } catch (err) {
+        alert('Mic access error: ' + err.message);
+        console.error('Mic access error:', err);
+      }
+    }
+
+    window.onload = () => {
+      initMic();
+    };
+  </script>
+
+</body>
+</html>
